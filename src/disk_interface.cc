@@ -158,9 +158,8 @@ bool DiskInterface::MakeDirs(const string& path) {
 }
 
 // RealDiskInterface -----------------------------------------------------------
-RealDiskInterface::RealDiskInterface() 
+RealDiskInterface::RealDiskInterface() {
 #ifdef _WIN32
-: use_cache_(false), long_paths_enabled_(false) {
   setlocale(LC_ALL, "");
 
   // Probe ntdll.dll for RtlAreLongPathsEnabled, and call it if it exists.
@@ -173,10 +172,8 @@ RealDiskInterface::RealDiskInterface()
       long_paths_enabled_ = (*func_ptr)();
     }
   }
-}
-#else
-{}
 #endif
+}
 
 TimeStamp RealDiskInterface::Stat(const string& path, string* err) const {
   METRIC_RECORD("node stat");

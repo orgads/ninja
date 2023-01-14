@@ -473,11 +473,11 @@ struct FakeCommandRunner : public CommandRunner {
       fs_(fs) {}
 
   // CommandRunner impl
-  virtual bool CanRunMore() const;
-  virtual bool StartCommand(Edge* edge);
-  virtual bool WaitForCommand(Result* result);
-  virtual vector<Edge*> GetActiveEdges();
-  virtual void Abort();
+  bool CanRunMore() const override;
+  bool StartCommand(Edge* edge) override;
+  bool WaitForCommand(Result* result) override;
+  vector<Edge*> GetActiveEdges() override;
+  void Abort() override;
 
   vector<string> commands_ran_;
   vector<Edge*> active_edges_;
@@ -494,7 +494,7 @@ struct BuildTest : public StateTestWithBuiltinRules, public BuildLogUser {
       : config_(MakeConfig()), command_runner_(&fs_), status_(config_),
         builder_(&state_, config_, NULL, log, &fs_, &status_, 0) {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     StateTestWithBuiltinRules::SetUp();
 
     builder_.command_runner_.reset(&command_runner_);
@@ -511,7 +511,7 @@ struct BuildTest : public StateTestWithBuiltinRules, public BuildLogUser {
     builder_.command_runner_.release();
   }
 
-  virtual bool IsPathDead(StringPiece s) const { return false; }
+  bool IsPathDead(StringPiece s) const override { return false; }
 
   /// Rebuild target in the 'working tree' (fs_).
   /// State of command_runner_ and logs contents (if specified) ARE MODIFIED.
@@ -2244,7 +2244,7 @@ struct BuildWithQueryDepsLogTest : public BuildTest {
     log_.Close();
   }
 
-  virtual void SetUp() {
+  void SetUp() override {
     BuildTest::SetUp();
 
     temp_dir_.CreateAndEnter("BuildWithQueryDepsLogTest");
@@ -2450,13 +2450,13 @@ TEST_F(BuildWithQueryDepsLogTest, TwoOutputsDepFileGCCOnlySecondaryOutput) {
 /// builder_ it sets up, because we want pristine objects for
 /// each build.
 struct BuildWithDepsLogTest : public BuildTest {
-  virtual void SetUp() {
+  void SetUp() override {
     BuildTest::SetUp();
 
     temp_dir_.CreateAndEnter("BuildWithDepsLogTest");
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     temp_dir_.Cleanup();
   }
 

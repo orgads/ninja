@@ -70,13 +70,13 @@ struct DiskInterface: public FileReader {
 /// Implementation of DiskInterface that actually hits the disk.
 struct RealDiskInterface : public DiskInterface {
   RealDiskInterface();
-  virtual ~RealDiskInterface() {}
-  virtual TimeStamp Stat(const std::string& path, std::string* err) const;
-  virtual bool MakeDir(const std::string& path);
-  virtual bool WriteFile(const std::string& path, const std::string& contents);
-  virtual Status ReadFile(const std::string& path, std::string* contents,
-                          std::string* err);
-  virtual int RemoveFile(const std::string& path);
+  ~RealDiskInterface() override = default;
+  TimeStamp Stat(const std::string& path, std::string* err) const override;
+  bool MakeDir(const std::string& path) override;
+  bool WriteFile(const std::string& path, const std::string& contents) override;
+  Status ReadFile(const std::string& path, std::string* contents,
+                  std::string* err) override;
+  int RemoveFile(const std::string& path) override;
 
   /// Whether stat information can be cached.  Only has an effect on Windows.
   void AllowStatCache(bool allow);

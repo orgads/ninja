@@ -16,6 +16,8 @@
 
 #include <stdarg.h>
 #include <stdlib.h>
+#include <sstream>
+#include "metrics.h"
 
 #ifdef _WIN32
 #include <fcntl.h>
@@ -47,11 +49,12 @@ void StatusPrinter::PlanHasTotalEdges(int total) {
 
 void StatusPrinter::BuildEdgeStarted(const Edge* edge,
                                      int64_t start_time_millis) {
+  edges_.push_back(edge);
   ++started_edges_;
   ++running_edges_;
   time_millis_ = start_time_millis;
 
-  if (edge->use_console() || printer_.is_smart_terminal())
+  if (false && (edge->use_console() || printer_.is_smart_terminal()))
     PrintStatus(edge, start_time_millis);
 
   if (edge->use_console())
@@ -69,10 +72,10 @@ void StatusPrinter::BuildEdgeFinished(Edge* edge, int64_t end_time_millis,
   if (config_.verbosity == BuildConfig::QUIET)
     return;
 
-  if (!edge->use_console())
+  if (false && !edge->use_console())
     PrintStatus(edge, end_time_millis);
 
-  --running_edges_;
+  edges_.remove(edge);
 
   // Print the command that is spewing before printing its output.
   if (!success) {
@@ -137,12 +140,23 @@ void StatusPrinter::BuildLoadDyndeps() {
 void StatusPrinter::BuildStarted() {
   started_edges_ = 0;
   finished_edges_ = 0;
-  running_edges_ = 0;
+  edges_.clear();
 }
 
 void StatusPrinter::BuildFinished() {
   printer_.SetConsoleLocked(false);
   printer_.PrintOnNewLine("");
+}
+
+void StatusPrinter::Report() {
+  const int64_t now = GetTimeMillis() - start_time_millis_;
+  printf("\x1B[%dA", last_reported_);
+  if (last_reported_ > edges_.size())
+    printf("\x1B[%dM", last_reported_);
+  for (const Edge* edge : edges_) {
+    PrintStatus(edge, now);
+  }
+  last_reported_ = edges_.size();
 }
 
 string StatusPrinter::FormatProgressStatus(const char* progress_status_format,
@@ -171,7 +185,7 @@ string StatusPrinter::FormatProgressStatus(const char* progress_status_format,
 
         // Running edges.
       case 'r': {
-        snprintf(buf, sizeof(buf), "%d", running_edges_);
+        snprintf(buf, sizeof(buf), "%d", int(edges_.size()));
         out += buf;
         break;
       }
@@ -238,9 +252,14 @@ void StatusPrinter::PrintStatus(const Edge* edge, int64_t time_millis) {
   if (to_print.empty() || force_full_command)
     to_print = edge->GetBinding("command");
 
-  to_print = FormatProgressStatus(progress_status_format_, time_millis)
-      + to_print;
-
+  to_print = FormatProgressStatus(progress_status_format_, time_millis) + to_print + ' ';
+  const int align = 100 - to_print.size();
+  if (align > 0)
+      to_print += string(align, '.');
+  stringstream str;
+  int ds = ((time_millis - edge->start_time_) / 100);
+  str << ds / 10 << '.' << ds % 10 << 's';
+  to_print += ' ' + str.str();
   printer_.Print(to_print,
                  force_full_command ? LinePrinter::FULL : LinePrinter::ELIDE);
 }

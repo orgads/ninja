@@ -210,6 +210,7 @@ struct Edge {
   BindingEnv* env_ = nullptr;
   VisitMark mark_ = VisitNone;
   size_t id_ = 0;
+  int64_t start_time_ = 0;
   bool outputs_ready_ = false;
   bool deps_loaded_ = false;
   bool deps_missing_ = false;

@@ -451,7 +451,8 @@ void Plan::Dump() const {
 }
 
 struct RealCommandRunner : public CommandRunner {
-  explicit RealCommandRunner(const BuildConfig& config) : config_(config) {}
+  explicit RealCommandRunner(const BuildConfig& config, Status *status)
+      : config_(config), status_(status) {}
   ~RealCommandRunner() override = default;
   bool CanRunMore() const override;
   bool StartCommand(Edge* edge) override;
@@ -462,6 +463,8 @@ struct RealCommandRunner : public CommandRunner {
   const BuildConfig& config_;
   SubprocessSet subprocs_;
   map<const Subprocess*, Edge*> subproc_to_edge_;
+  Status* status_;
+  int64_t timer_ = 0;
 };
 
 vector<Edge*> RealCommandRunner::GetActiveEdges() {
@@ -500,6 +503,11 @@ bool RealCommandRunner::WaitForCommand(Result* result) {
     bool interrupted = subprocs_.DoWork();
     if (interrupted)
       return false;
+    const int64_t now = GetTimeMillis();
+    if (now - timer_ > 100) {
+      timer_ = now;
+      status_->Report();
+    }
   }
 
   result->status = subproc->Finish();
@@ -521,6 +529,7 @@ Builder::Builder(State* state, const BuildConfig& config,
       start_time_millis_(start_time_millis), disk_interface_(disk_interface),
       scan_(state, build_log, deps_log, disk_interface,
             &config_.depfile_parser_options) {
+  status->SetStartTimeMillis(start_time_millis);
   lock_file_path_ = ".ninja_lock";
   string build_dir = state_->bindings_.LookupVariable("builddir");
   if (!build_dir.empty())
@@ -619,7 +628,7 @@ bool Builder::Build(string* err) {
     if (config_.dry_run)
       command_runner_.reset(new DryRunCommandRunner);
     else
-      command_runner_.reset(new RealCommandRunner(config_));
+      command_runner_.reset(new RealCommandRunner(config_, status_));
   }
 
   // We are about to start the build process.
@@ -702,6 +711,7 @@ bool Builder::Build(string* err) {
   }
 
   status_->BuildFinished();
+  status_->Report();
   return true;
 }
 
@@ -711,6 +721,7 @@ bool Builder::StartEdge(Edge* edge, string* err) {
     return true;
 
   int64_t start_time_millis = GetTimeMillis() - start_time_millis_;
+  edge->start_time_ = start_time_millis;
   running_edges_.insert(make_pair(edge, start_time_millis));
 
   status_->BuildEdgeStarted(edge, start_time_millis);

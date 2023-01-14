@@ -15,6 +15,7 @@
 #ifndef NINJA_STATUS_H_
 #define NINJA_STATUS_H_
 
+#include <list>
 #include <map>
 #include <string>
 
@@ -24,6 +25,7 @@
 /// Abstract interface to object that tracks the status of a build:
 /// completion fraction, printing updates.
 struct Status {
+  virtual void SetStartTimeMillis(int64_t start_time_millis) = 0;
   virtual void PlanHasTotalEdges(int total) = 0;
   virtual void BuildEdgeStarted(const Edge* edge, int64_t start_time_millis) = 0;
   virtual void BuildEdgeFinished(Edge* edge, int64_t end_time_millis,
@@ -31,6 +33,7 @@ struct Status {
   virtual void BuildLoadDyndeps() = 0;
   virtual void BuildStarted() = 0;
   virtual void BuildFinished() = 0;
+  virtual void Report() = 0;
 
   virtual void Info(const char* msg, ...) = 0;
   virtual void Warning(const char* msg, ...) = 0;
@@ -41,8 +44,13 @@ struct Status {
 
 /// Implementation of the Status interface that prints the status as
 /// human-readable strings to stdout
-struct StatusPrinter : Status {
-  explicit StatusPrinter(const BuildConfig& config);
+struct StatusPrinter : Status
+{
+    explicit StatusPrinter(const BuildConfig &config);
+    void SetStartTimeMillis(int64_t start_time_millis) override
+    {
+        start_time_millis_ = start_time_millis;
+    }
   void PlanHasTotalEdges(int total) override;
   void BuildEdgeStarted(const Edge* edge, int64_t start_time_millis) override;
   void BuildEdgeFinished(Edge* edge, int64_t end_time_millis,
@@ -50,6 +58,7 @@ struct StatusPrinter : Status {
   void BuildLoadDyndeps() override;
   void BuildStarted() override;
   void BuildFinished() override;
+  void Report() override;
 
   void Info(const char* msg, ...) override;
   void Warning(const char* msg, ...) override;
@@ -71,7 +80,9 @@ struct StatusPrinter : Status {
   const BuildConfig& config_;
 
   int started_edges_, finished_edges_, total_edges_, running_edges_;
-  int64_t time_millis_;
+  int last_reported_ = 0;
+  int64_t time_millis_, start_time_millis_;
+  std::list<const Edge*> edges_;
 
   /// Prints progress output.
   LinePrinter printer_;
